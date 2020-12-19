@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>MyHtml.html</title>
+
+<!-- <meta name="keywords" content="keyword1,keyword2,keyword3">
+    <meta name="description" content="this is my page">
+<meta name="content-type" content="text/html; charset=UTF-8">-->
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" href="css/demo.css" type="text/css">
+
+<link rel="stylesheet" href="css/zTreeStyle/zTreeStyle.css"
+	type="text/css">
+<script type="text/javascript" src="js/jquery-1.4.4.min.js"></script>
+<script type="text/javascript" src="js/jquery.ztree.core.js"></script>
+<script type="text/javascript" src="js/jquery.ztree.excheck.js"></script>
+<script type="text/javascript" src="js/jquery.ztree.exedit.js"></script>
+<script type="text/javascript" src="js/fuzzysearch.js"></script>
+<script type="text/javascript" src="js/index.js"></script>
+<!--<link rel="stylesheet" type="text/css" href="./styles.css">-->
+
+<script>
+	var setting = {
+		check : {
+			enable : true
+		//checkbox
+		},
+		view : {
+			nameIsHTML : true, //允许name支持html				
+			selectedMulti : false,
+
+		},
+		edit : {
+			enable : true,
+			showRemoveBtn : true,
+			showRenameBtn : true
+		},
+		async : {
+			enable : true, //是否异步加载
+			url : "query.do",
+			autoParam : [ "id", "name" ]
+		},
+		callback : {
+			onClick : zTreeOnClick,
+			beforeDrag : beforeDrag,
+			beforeDrop : beforeDrop,
+			//拖拽结束事件
+			onDrop : _zTreeOnDrop
+		}
+	};
+	var _zTreeOnDrop = function(event, treeId, treeNodes, targetNode, moveType) {
+
+		if (!moveType) {
+			return false;
+		}
+
+		var zTree = $.fn.zTree.getZTreeObj(treeId);
+		var paramData = [];
+		var nodeData = [];
+
+		//子节点拖拽到跟节点 和 根节点的相互排序
+		if (targetNode == null || treeNodes[0].level == 0) {
+			nodeData = zTree.getNodesByParam("level", 0);
+		} else {
+			// 拖拽自己成为子节点
+			var node = zTree.getNodeByTId(treeNodes[0].parentTId);
+			if (node.isParent) {
+				nodeData = zTree.transformToArray(node.children);
+			}
+		}
+
+		$.each(nodeData, function(i, item) {
+			var dept = {};
+			dept["id"] = item.id;
+			dept["pid"] = item.pId;//根目录则为null
+			dept["order"] = item.getIndex();//核心：当前节点同级的下标位
+			paramData.push(dept);
+		});
+		//得到这次操作需要变更的数据范围
+		console.log(JSON.stringify(paramData));
+		//请求后台批量处理即可...
+	};
+	function rename() {
+		var name = $("#log_1").attr("value");
+		console.log(name);
+		var treeObj = $.fn.zTree.getZTreeObj("demo"), nodes = treeObj
+				.getSelectedNodes(true), newNode = nodes[0];
+		if (newNode != null) {
+			newNode.name = name;
+			console.log(newNode.name);
+		}
+
+		$.ajax({
+			type : "post",
+			url : "modif.do",
+			data : {
+				id : newNode.id,
+				name : newNode.name,
+				parentId : newNode.parentId
+			},
+			dataType : "json",
+			success : function(response) {
+				alert(response.info);
+				if (response.code == 0) {
+					alert(response.info);
+				}
+			},
+		});
+	}
+	function zTreeOnClick(event, treeId, treeNode) {
+		var treeObj = $.fn.zTree.getZTreeObj("demo"), nodes = treeObj
+				.getSelectedNodes(true);
+		for (var i = 0; i < nodes.length; i++) {
+			$("#log_1").val(nodes[i].name);
+			var pNode = nodes[i].getParentNode();
+			if (pNode != null)
+				$("#log_0").val(pNode.name);
+			else
+				$("#log_0").val("");
+		}
+	}
+	function beforeDrag(treeId, treeNodes) {
+		for (var i = 0, l = treeNodes.length; i < l; i++) {
+			if (treeNodes[i].drag === false) {
+				return false;
+			}
+		}
+		return true;
+	}
+	function beforeDrop(treeId, treeNodes, targetNode, moveType) {
+		return targetNode ? targetNode.drop !== false : true;
+	}
+	$(function() {
+		$.fn.zTree.init($("#demo"), setting);
+		fuzzySearch('demo', '#key', null, true); //初始化模糊搜索方法
+	});
+</script>
+</head>
+
+<body>
+	<div style="display: inline-block;">
+		<ul id="demo" class="ztree"></ul>
+	</div>
+	<div class="right" style="display: inline-block;margin-left: 10%;">
+		<ul class="info">
+			<li class="title">
+			<li><p>
+					搜索试试看：<br /> 关键字：<input type="text" id="key" value="" class="empty"
+						placeholder="请输入关键字" /><br />
+				</p></li>
+			<li><p>
+					上级目录<br /> <input type="text" id="log_0" value="" class="empty"
+						placeholder="请输入关键字" /><br />
+				</p></li>
+			<li><p>
+					当前目录<br /> <input type="text" id="log_1" value="" class="empty"
+						placeholder="请输入关键字" /><br />
+				</p></li>
+			<button type="button" onclick="rename()">修改保存</button>
+		</ul>
+		</li>
+
+		</ul>
+	</div>
+</body>
+</html>
